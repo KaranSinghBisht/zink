@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { listLinks } from "@/lib/links";
-import { getConfig } from "@/lib/config";
+import { isDemoMode } from "@/lib/config";
+import { requestOrigin } from "@/lib/origin";
 import { zatsToDecimalZec } from "@/lib/zec";
 import { getSyncHealth, syncAgeLabel } from "@/lib/health";
 import { ADMIN_COOKIE, isAuthorizedCookie } from "@/lib/auth";
@@ -32,6 +33,14 @@ function StatusBadge({ status }: { status: "unpaid" | "paid" }) {
 }
 
 function SyncHealthBadge() {
+  if (isDemoMode()) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-md border border-gold-deep/30 bg-gold-pale/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-gold-deep">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gold-deep" />
+        Hosted showcase — sample ledger
+      </span>
+    );
+  }
   const { lastSyncAt, lastError } = getSyncHealth();
   if (lastError) {
     return (
@@ -65,7 +74,7 @@ export default async function DashboardPage() {
   }
 
   const links = listLinks();
-  const { baseUrl } = getConfig();
+  const baseUrl = await requestOrigin();
   const paid = links.filter((link) => link.status === "paid");
   const collectedZats = paid.reduce(
     (sum, link) => sum + (link.paidValueZats ?? 0),
@@ -83,7 +92,7 @@ export default async function DashboardPage() {
           zink<span className="text-gold-deep">.</span>
         </Link>
         <nav className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.22em] text-mute">
-          <Link href="/" className="transition-colors hover:text-ink">
+          <Link href="/new" className="transition-colors hover:text-ink">
             New link
           </Link>
           <a
@@ -155,7 +164,7 @@ export default async function DashboardPage() {
                   <td colSpan={7} className="px-4 py-10 text-center text-mute">
                     No links yet.{" "}
                     <Link
-                      href="/"
+                      href="/new"
                       className="font-semibold text-gold-deep underline"
                     >
                       Create your first payment link

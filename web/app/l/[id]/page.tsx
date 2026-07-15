@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLink } from "@/lib/links";
-import { getConfig } from "@/lib/config";
+import { requestOrigin } from "@/lib/origin";
 import { zatsToDecimalZec } from "@/lib/zec";
 import { Qr } from "@/components/qr";
 import { CopyButton } from "@/components/copy-button";
 import { PayStatus } from "@/components/pay-status";
+import { VeilBends } from "@/components/veil-bends";
 
 export const dynamic = "force-dynamic";
 
@@ -27,15 +28,11 @@ export default async function PayPage({
 
   const amount = zatsToDecimalZec(BigInt(link.amountZats));
   const shortAddress = `${link.address.slice(0, 20)}…${link.address.slice(-10)}`;
-  const shareUrl = `${getConfig().baseUrl}/l/${link.id}`;
+  const shareUrl = `${await requestOrigin()}/l/${link.id}`;
 
   return (
     <div className="veil flex flex-1 items-center justify-center px-4 py-10">
-      <div className="veil-lines" />
-      <div
-        className="veil-ring left-1/2 top-1/2 h-[44rem] w-[44rem] -translate-x-1/2 -translate-y-1/2"
-        aria-hidden
-      />
+      <VeilBends intensity={1} speed={0.1} />
       <main className="rise w-full max-w-md">
         <p className="mb-4 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-cream/45">
           Shielded <span className="text-cream/25">·</span> [ Orchard · ZIP-321

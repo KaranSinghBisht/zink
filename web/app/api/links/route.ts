@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createLink, listLinks } from "@/lib/links";
+import { DemoModeError } from "@/lib/demo";
 import { decimalZecToZats } from "@/lib/zec";
 import { isAuthorizedRequest } from "@/lib/auth";
 import { rateLimitExceeded } from "@/lib/ratelimit";
@@ -78,6 +79,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     return NextResponse.json({ link }, { status: 201 });
   } catch (err) {
+    if (err instanceof DemoModeError) {
+      return NextResponse.json({ error: err.message }, { status: 503 });
+    }
     log.error("link creation failed", err);
     return NextResponse.json(
       { error: "Failed to create payment link" },

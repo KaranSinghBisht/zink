@@ -1,23 +1,28 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { getConfig } from "./config";
 
 export const ADMIN_COOKIE = "zink_admin";
+
+// Read directly from the environment (not getConfig) so auth also works in
+// demo mode, where the wallet-related variables are absent.
+function adminToken(): string | null {
+  return process.env.ZINK_ADMIN_TOKEN?.trim() || null;
+}
 
 function digest(value: string): Buffer {
   return createHash("sha256").update(value, "utf8").digest();
 }
 
 export function secretMatches(candidate: string | undefined | null): boolean {
-  const { adminToken } = getConfig();
-  if (!adminToken) return false;
+  const token = adminToken();
+  if (!token) return false;
   if (!candidate) return false;
-  return timingSafeEqual(digest(candidate), digest(adminToken));
+  return timingSafeEqual(digest(candidate), digest(token));
 }
 
 /** True when no admin token is configured (local/dev mode: routes stay open). */
 export function isLocalMode(): boolean {
-  return getConfig().adminToken === null;
+  return adminToken() === null;
 }
 
 /**

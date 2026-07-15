@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLink, toPublicStatus } from "@/lib/links";
+import { isDemoMode } from "@/lib/config";
 import { isWatcherHealthy } from "@/lib/health";
 import { log } from "@/lib/log";
 
@@ -24,7 +25,7 @@ export async function GET(
     // a redacted DTO is returned (no memo contents, no merchant fields).
     return NextResponse.json({
       link: toPublicStatus(link),
-      watcherOk: isWatcherHealthy(),
+      watcherOk: isDemoMode() ? true : isWatcherHealthy(),
     });
   } catch (err) {
     log.error("link fetch failed", err);

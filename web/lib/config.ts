@@ -7,7 +7,6 @@ export interface ZinkConfig {
   server: string;
   baseUrl: string;
   syncIntervalMs: number;
-  adminToken: string | null;
   minConfirmations: number;
 }
 
@@ -17,6 +16,15 @@ function requireEnv(name: string, fallback?: string): string {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+/**
+ * Demo mode: no wallet configured (e.g. the hosted showcase on serverless).
+ * The site serves sample ledger data and disables link creation; the real
+ * product runs wherever the merchant's view-only wallet lives.
+ */
+export function isDemoMode(): boolean {
+  return !process.env.ZINK_WALLET_DIR;
 }
 
 let cached: ZinkConfig | null = null;
@@ -33,7 +41,6 @@ export function getConfig(): ZinkConfig {
     server: requireEnv("ZINK_SERVER", "zecrocks"),
     baseUrl: requireEnv("ZINK_BASE_URL", "http://localhost:3000"),
     syncIntervalMs: Number(requireEnv("ZINK_SYNC_INTERVAL_MS", "20000")),
-    adminToken: process.env.ZINK_ADMIN_TOKEN?.trim() || null,
     minConfirmations: Math.max(
       1,
       Number(requireEnv("ZINK_MIN_CONFIRMATIONS", "1")),

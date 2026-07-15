@@ -2,6 +2,8 @@ import { nanoid } from "nanoid";
 import { getDb } from "./db";
 import { generateShieldedAddress } from "./devtool";
 import { buildPaymentUri } from "./zip321";
+import { isDemoMode } from "./config";
+import { DEMO_LINKS, DemoModeError } from "./demo";
 
 export type LinkStatus = "unpaid" | "paid";
 
@@ -83,6 +85,9 @@ export async function createLink(input: {
   amountZats: bigint;
   description: string;
 }): Promise<PaymentLink> {
+  if (isDemoMode()) {
+    throw new DemoModeError();
+  }
   if (input.amountZats <= 0n) {
     throw new Error("Amount must be positive");
   }
@@ -109,12 +114,18 @@ export async function createLink(input: {
 }
 
 export function getLink(id: string): PaymentLink | null {
+  if (isDemoMode()) {
+    return DEMO_LINKS.find((link) => link.id === id) ?? null;
+  }
   const row = getDb().prepare("SELECT * FROM links WHERE id = ?").get(id) as
     LinkRow | undefined;
   return row ? toLink(row) : null;
 }
 
 export function listLinks(): PaymentLink[] {
+  if (isDemoMode()) {
+    return [...DEMO_LINKS].sort((a, b) => b.createdAt - a.createdAt);
+  }
   const rows = getDb()
     .prepare("SELECT * FROM links ORDER BY created_at DESC")
     .all() as LinkRow[];
@@ -122,6 +133,9 @@ export function listLinks(): PaymentLink[] {
 }
 
 export function listUnpaidLinks(): PaymentLink[] {
+  if (isDemoMode()) {
+    return DEMO_LINKS.filter((link) => link.status === "unpaid");
+  }
   const rows = getDb()
     .prepare("SELECT * FROM links WHERE status = 'unpaid'")
     .all() as LinkRow[];

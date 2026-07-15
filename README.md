@@ -11,6 +11,11 @@ through the viewing key and reconciled into a dashboard with CSV export.
 
 Built for **ZecHub Hackathon 3.0** — Accounting track (payment management).
 
+**Live showcase:** [zink-bice.vercel.app](https://zink-bice.vercel.app) — a hosted,
+read-only deployment with a sample ledger (serverless hosts can't run the wallet
+sync). The full mainnet flow — real link creation, live payment detection — runs
+locally next to a view-only wallet; see [Quick start](#quick-start) below.
+
 ## Why this is only possible on Zcash
 
 On transparent chains a payment link *is* your address: every customer can read your
