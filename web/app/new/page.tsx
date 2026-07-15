@@ -47,11 +47,12 @@ export default function NewLinkPage() {
           {demo ? (
             <div className="mb-6 rounded-xl border border-gold-deep/30 bg-gold-pale/40 px-4 py-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold-deep">
-                Hosted showcase
+                Hosted demo
               </p>
               <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
-                Try the form to generate a synthetic invoice preview. It will
-                not create an address or accept payment. The{" "}
+                Create a synthetic invoice and walk through the customer
+                experience. No Zcash address is generated and no real payment
+                can be sent. The{" "}
                 <Link
                   href="/dash"
                   className="font-semibold text-gold-deep underline"

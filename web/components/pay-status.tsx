@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { networkLabel, type ZcashNetwork } from "@/lib/network";
 
 export interface LinkStatusPayload {
@@ -23,6 +23,9 @@ export function PayStatus({
 }) {
   const [state, setState] = useState<LinkStatusPayload>(initial);
   const [watcherOk, setWatcherOk] = useState(true);
+  const [simulating, setSimulating] = useState(false);
+  const [simulated, setSimulated] = useState(false);
+  const simulationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (demo || state.status === "paid") return;
@@ -49,6 +52,24 @@ export function PayStatus({
     return () => clearInterval(timer);
   }, [demo, linkId, state.status]);
 
+  useEffect(
+    () => () => {
+      if (simulationTimer.current) clearTimeout(simulationTimer.current);
+    },
+    [],
+  );
+
+  function simulatePayment() {
+    if (!demo || simulating || state.status === "paid") return;
+    setSimulating(true);
+    simulationTimer.current = setTimeout(() => {
+      setState((current) => ({ ...current, status: "paid" }));
+      setSimulated(true);
+      setSimulating(false);
+      simulationTimer.current = null;
+    }, 1200);
+  }
+
   if (state.status === "paid") {
     return (
       <div className="flex flex-col items-center gap-4 py-2">
@@ -62,7 +83,9 @@ export function PayStatus({
           </div>
           <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-cleared/80">
             {demo
-              ? "illustrative hosted sample"
+              ? simulated
+                ? "simulated demo payment"
+                : "illustrative hosted sample"
               : `mined on zcash ${networkLabel(network)}`}
           </div>
         </div>
@@ -95,16 +118,27 @@ export function PayStatus({
 
   if (demo) {
     return (
-      <div
-        role="status"
-        className="flex flex-col items-center gap-2 py-3 text-center"
-      >
+      <div className="flex flex-col items-center gap-3 py-3 text-center">
         <span className="rounded-md border border-gold-deep/40 bg-gold-pale/35 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-gold-deep">
-          Showcase state · payments disabled
+          Demo mode · no transaction
         </span>
-        <p className="max-w-xs text-[11.5px] leading-relaxed text-mute">
-          Run Zink beside a view-only wallet to watch a real{" "}
-          {networkLabel(network)} payment clear.
+        <button
+          type="button"
+          onClick={simulatePayment}
+          disabled={simulating}
+          aria-busy={simulating}
+          className="min-h-11 w-full cursor-pointer rounded-xl bg-ink px-4 py-3 font-display text-[15px] font-bold text-paper transition-opacity duration-100 ease-out hover:opacity-90 active:translate-y-px disabled:cursor-wait disabled:opacity-60"
+        >
+          {simulating ? "Simulating watcher…" : "Simulate payment"}
+        </button>
+        <p
+          role="status"
+          aria-live="polite"
+          className="max-w-xs text-[11.5px] leading-relaxed text-mute"
+        >
+          {simulating
+            ? "Demonstrating how the view-only watcher clears an invoice."
+            : `Preview the paid state here, or run Zink beside a view-only wallet to watch a real ${networkLabel(network)} payment clear.`}
         </p>
       </div>
     );

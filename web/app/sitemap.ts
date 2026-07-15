@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const publicOrigin = "https://zink-bice.vercel.app";
+const publicOrigin = "https://zink-zec.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return ["", "/protocol", "/new"].map((path) => ({

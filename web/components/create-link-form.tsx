@@ -129,15 +129,15 @@ export function CreateLinkForm({
       >
         {pending
           ? showcase
-            ? "Opening preview…"
+            ? "Creating demo invoice…"
             : "Deriving a fresh address…"
           : showcase
-            ? "Preview sample invoice"
+            ? "Create demo invoice"
             : "Create payment link"}
       </button>
       <p className="text-[13px] leading-relaxed text-mute">
         {showcase
-          ? "Creates a synthetic, non-payable preview. No address is derived and nothing is saved."
+          ? "Creates a synthetic, non-payable invoice. You can simulate the paid state on the next screen; nothing is saved."
           : "Each link derives a new shielded address from your viewing key. Zink never holds keys that can spend."}
       </p>
     </form>

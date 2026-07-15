@@ -3,7 +3,7 @@
 **Private Zcash payment links that reconcile themselves.**
 
 [![CI](https://github.com/KaranSinghBisht/zink/actions/workflows/ci.yml/badge.svg)](https://github.com/KaranSinghBisht/zink/actions/workflows/ci.yml)
-[![Live showcase](https://img.shields.io/badge/live-showcase-f4b728)](https://zink-bice.vercel.app/)
+[![Live showcase](https://img.shields.io/badge/live-showcase-f4b728)](https://zink-zec.vercel.app/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-16110c.svg)](./LICENSE)
 
 Zink lets a merchant create a familiar payment link without publishing a
@@ -14,7 +14,7 @@ it cannot spend them.
 
 Built for **ZecHub Hackathon 3.0**, Accounting track.
 
-- **Try the UI:** [zink-bice.vercel.app](https://zink-bice.vercel.app/)
+- **Try the UI:** [zink-zec.vercel.app](https://zink-zec.vercel.app/)
 - **Run the complete flow:** use Zcash testnet with the guide below
 
 > The hosted Vercel deployment is an explicitly non-payable showcase. Its
