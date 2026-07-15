@@ -1,0 +1,89 @@
+diff --git a/src/commands/wallet/gen_addr.rs b/src/commands/wallet/gen_addr.rs
+index 7677f75..db429c3 100644
+--- a/src/commands/wallet/gen_addr.rs
++++ b/src/commands/wallet/gen_addr.rs
+@@ -24,6 +24,11 @@ pub(crate) struct Command {
+     #[cfg(feature = "qr")]
+     #[arg(long, default_value = "true")]
+     display_qr: bool,
++
++    /// Omit the transparent receiver, producing a shielded-only (and therefore
++    /// unlinkable, per ZIP 316) unified address.
++    #[arg(long)]
++    shielded_only: bool,
+ }
+ 
+ impl Command {
+@@ -35,8 +40,13 @@ impl Command {
+         let account = select_account(&db_data, self.account_id)?;
+ 
+         println!("Account {:?}", account.id());
++        let request = if self.shielded_only {
++            UnifiedAddressRequest::SHIELDED
++        } else {
++            UnifiedAddressRequest::AllAvailableKeys
++        };
+         let (ua, _) = db_data
+-            .get_next_available_address(account.id(), UnifiedAddressRequest::AllAvailableKeys)?
++            .get_next_available_address(account.id(), request)?
+             .unwrap();
+         let ua_str = ua.encode(&params);
+         println!("     Address: {ua_str}");
+diff --git a/src/commands/wallet/sync.rs b/src/commands/wallet/sync.rs
+index 24a0590..bae3f10 100644
+--- a/src/commands/wallet/sync.rs
++++ b/src/commands/wallet/sync.rs
+@@ -418,25 +418,36 @@ async fn update_subtree_roots<P: Parameters>(
+     db_data.put_orchard_subtree_roots(0, &orchard_roots)?;
+ 
+     // Ironwood note commitments are Orchard-shaped, so its subtree roots use the same
+-    // hash type. A server that predates Ironwood activation simply streams none.
++    // hash type. A server that predates Ironwood activation simply streams none — but
++    // servers that validate the protocol enum (e.g. current lightwalletd deployments)
++    // reject the request outright; treat that rejection the same as an empty stream.
+     let mut request = service::GetSubtreeRootsArg::default();
+     request.set_shielded_protocol(service::ShieldedProtocol::Ironwood);
+-    let ironwood_roots: Vec<CommitmentTreeRoot<MerkleHashOrchard>> = client
+-        .get_subtree_roots(request)
+-        .await?
+-        .into_inner()
+-        .and_then(|root| async move {
+-            let root_hash = MerkleHashOrchard::read(&root.root_hash[..])?;
+-            Ok(CommitmentTreeRoot::from_parts(
+-                BlockHeight::from_u32(root.completing_block_height as u32),
+-                root_hash,
+-            ))
+-        })
+-        .try_collect()
+-        .await?;
+-
+-    info!("Ironwood tree has {} subtrees", ironwood_roots.len());
+-    db_data.put_ironwood_subtree_roots(0, &ironwood_roots)?;
++    let ironwood_roots: Result<Vec<CommitmentTreeRoot<MerkleHashOrchard>>, anyhow::Error> =
++        match client.get_subtree_roots(request).await {
++            Ok(response) => response
++                .into_inner()
++                .and_then(|root| async move {
++                    let root_hash = MerkleHashOrchard::read(&root.root_hash[..])?;
++                    Ok(CommitmentTreeRoot::from_parts(
++                        BlockHeight::from_u32(root.completing_block_height as u32),
++                        root_hash,
++                    ))
++                })
++                .try_collect()
++                .await
++                .map_err(anyhow::Error::from),
++            Err(status) => Err(status.into()),
++        };
++    match ironwood_roots {
++        Ok(ironwood_roots) => {
++            info!("Ironwood tree has {} subtrees", ironwood_roots.len());
++            db_data.put_ironwood_subtree_roots(0, &ironwood_roots)?;
++        }
++        Err(e) => {
++            warn!("Server does not serve Ironwood subtree roots ({e}); skipping");
++        }
++    }
+ 
+     Ok(())
+ }

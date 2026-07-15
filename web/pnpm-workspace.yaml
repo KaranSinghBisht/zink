@@ -1,0 +1,9 @@
+# Force the patched PostCSS (GHSA-qx2v-qp2m-jg93) over Next.js's pinned 8.4.31.
+overrides:
+  postcss: ">=8.5.10"
+
+# Native modules that are allowed to run install/build scripts.
+allowBuilds:
+  better-sqlite3: true
+  sharp: true
+  unrs-resolver: true
