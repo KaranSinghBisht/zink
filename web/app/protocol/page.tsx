@@ -24,7 +24,7 @@ const PROTOCOL_FACTS = [
   {
     index: "02",
     tag: "DIVERSIFIED",
-    bracket: "[ ZIP-316 · ORCHARD-ONLY ]",
+    bracket: "[ ZIP-316 · SHIELDED-ONLY ]",
     title: "every invoice gets its own address.",
     body: "One wallet key yields billions of shielded addresses that are cryptographically unlinkable. Each link derives a fresh one, so no customer can connect an invoice to your balance, your history, or each other.",
   },

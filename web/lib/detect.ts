@@ -7,11 +7,17 @@ import {
 import { getConfig } from "./config";
 import { log } from "./log";
 
+/**
+ * The diversified address is the authoritative signal: it is derived per link
+ * and cannot be chosen by the payer. The memo is payer-controlled, so it is
+ * only consulted when the wallet backend does not report an address for the
+ * output — never as an override for an address that failed to match.
+ */
 function outputMatchesLink(
   output: ReceivedOutput,
   link: { id: string; address: string },
 ): boolean {
-  if (output.toAddress && output.toAddress === link.address) return true;
+  if (output.toAddress) return output.toAddress === link.address;
   return output.memoText?.startsWith(memoRefFor(link.id)) ?? false;
 }
 

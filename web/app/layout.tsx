@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Zink — payment links that never link back",
     description:
-      "Non-custodial Zcash payment links. Every link is a fresh Orchard-only shielded address, reconciled through a viewing key.",
+      "Non-custodial Zcash payment links. Every link is a fresh shielded-only diversified address, reconciled through a viewing key.",
     siteName: "Zink",
     type: "website",
   },

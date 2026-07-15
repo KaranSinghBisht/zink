@@ -200,7 +200,7 @@ export default async function PayPage({
 
           <footer className="mt-6 border-t border-dashed border-line pt-4">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">
-              Orchard-only · unique address · viewing-key monitored · encrypted
+              Shielded-only · unique address · viewing-key monitored · encrypted
               memo
             </p>
             <p className="mt-2 text-[11.5px] leading-relaxed text-faint">

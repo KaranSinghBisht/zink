@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-16110c.svg)](./LICENSE)
 
 Zink lets a merchant create a familiar payment link without publishing a
-reusable address. Each invoice gets a fresh Orchard-only diversified address,
+reusable address. Each invoice gets a fresh shielded-only diversified address,
 the customer pays through a ZIP-321 URI, and a view-only wallet marks the right
 invoice paid after it is mined. The Zink process can observe incoming payments;
 it cannot spend them.
@@ -22,7 +22,7 @@ Built for **ZecHub Hackathon 3.0**, Accounting track.
 > serverless deployment does not run the long-lived wallet sync worker. Run
 > Zink beside a view-only wallet for real testnet or mainnet detection.
 
-## The 30-second judge version
+## In one paragraph
 
 A reusable transparent payment address exposes a merchant's public transaction
 graph. Zink instead creates a fresh shielded address per invoice. A Unified Full
@@ -31,18 +31,36 @@ while the spending key stays elsewhere. The payment memo carries an encrypted
 `zink:<invoice-id>` reference, so the ledger knows which invoice cleared without
 placing the reference on the public chain.
 
-## What works
+## Status, stated plainly
 
-| Capability | Hosted showcase | Self-hosted testnet/mainnet |
-|---|---:|---:|
-| Landing, protocol explainer, responsive invoice UI | Yes | Yes |
-| Sample dashboard and CSV UX | Yes, synthetic | Yes, real data |
-| Build and share a custom invoice preview | Yes, synthetic | Yes |
-| Create a fresh Orchard-only address | Disabled | Yes |
-| ZIP-321 QR/deep link with amount + encrypted memo | Disabled | Yes |
-| Detect mined shielded payments | Disabled | Yes |
-| `main` / `test` network separation | UI defaults to main | Yes |
-| Merchant authentication | Not needed for synthetic data | Required, fail-closed |
+The create, derive, watch, and reconcile paths are implemented, and the view-only
+wallet syncs mainnet live. **A cleared payment has not been demonstrated
+end-to-end.** The demo recording shows an invoice being created, a fresh shielded
+address being derived, and the ledger watching mainnet — not a settlement. No
+funded wallet was available before the hackathon deadline, so the detection query
+and the `PAID` transition, while implemented and documented below, have not been
+proven against a real mined payment.
+
+Everything else in this README describes what the code does. This section
+describes what has actually been observed. The two are kept separate on purpose.
+
+## What's implemented, and what's been verified
+
+"Implemented" means the code path exists and is exercised by tests or by hand.
+"Verified" means it has been observed working against a real chain.
+
+| Capability | Hosted showcase | Self-hosted | Verified against chain |
+|---|---:|---:|---|
+| Landing, protocol explainer, responsive invoice UI | Yes | Yes | n/a |
+| Sample dashboard and CSV UX | Yes, synthetic | Yes, real data | n/a |
+| Build and share a custom invoice preview | Yes, synthetic | Yes | n/a |
+| Derive a fresh shielded-only address | Disabled | Yes | **Yes** — real `u1…`/`utest1…` derived from a UFVK |
+| ZIP-321 QR/deep link with amount + encrypted memo | Disabled | Yes | Yes — URI built and scannable |
+| Sync a view-only wallet against mainnet | Disabled | Yes | **Yes** — syncs live via lightwalletd |
+| Detect mined shielded payments | Disabled | Implemented | **No** — never exercised against a mined payment |
+| Stamp an invoice `PAID` | Disabled | Implemented | **No** — see [Status](#status-stated-plainly) |
+| `main` / `test` network separation | UI defaults to main | Yes | Yes — wrong-network output rejected |
+| Merchant authentication | Not needed for synthetic data | Required, fail-closed | Yes — unit tested |
 
 Network handling is explicit end to end: `main` expects `u1…` addresses and
 displays `ZEC`; `test` expects `utest1…` addresses and displays `TAZ`. Output
@@ -68,27 +86,96 @@ unsafe hosting, and operational metadata leaks.
 
 ## Architecture
 
-```text
-customer wallet
-      │  ZIP-321: shielded address + amount + encrypted memo
-      ▼
-Zcash shielded pool
-      │  mined transaction
-      ▼
-patched zcash-devtool ── syncs through lightwalletd (Tor by default)
-      │
-      ├── view-only wallet SQLite (received outputs and decrypted memos)
-      │
-      ▼
-Zink sync worker ── matches address + amount + zink:<id>
-      │
-      └── Zink SQLite ── pay page / merchant ledger / CSV export
+### Where the keys live
+
+The whole design reduces to one boundary: the spending key never reaches the
+host that serves the payment links.
+
+```mermaid
+flowchart LR
+    subgraph offline ["Separate host, ideally offline"]
+        SK["Spending key<br/><i>age-encrypted mnemonic</i>"]
+    end
+
+    subgraph host ["Zink host"]
+        UFVK["UFVK<br/><i>view-only</i>"]
+        WORKER["sync worker"]
+        DB[("Zink SQLite<br/><i>invoices</i>")]
+    end
+
+    subgraph chain ["Zcash mainnet"]
+        POOL["Orchard pool"]
+    end
+
+    SK -. "derives once, out of band" .-> UFVK
+    UFVK -->|"watch · decrypt · reconcile"| POOL
+    UFVK --x|"cannot spend"| POOL
+    UFVK --> WORKER --> DB
+
+    style offline fill:#f6f4ed,stroke:#1b7c51,stroke-width:2px
+    style host fill:#f6f4ed,stroke:#171b28
+    style chain fill:#f6f4ed,stroke:#f4b728
 ```
+
+A compromise of the Zink host exposes payment *metadata* and viewing capability.
+It does not move funds, because no key on that host can.
+
+### One key, many unlinkable faces
+
+A single UFVK yields billions of diversified addresses. Each invoice takes a
+fresh one, so no two invoices share a public address-level link — yet one
+incoming viewing key scans them all in a single pass.
+
+```mermaid
+flowchart TD
+    UFVK["One UFVK"]
+    UFVK --> D0["diversifier <i>i</i>"] --> A0["u1abc… → invoice A"]
+    UFVK --> D1["diversifier <i>j</i>"] --> A1["u1xyz… → invoice B"]
+    UFVK --> D2["diversifier <i>k</i>"] --> A2["u1qrs… → invoice C"]
+
+    A0 -. "no public link" .- A1
+    A1 -. "no public link" .- A2
+
+    IVK["Incoming Viewing Key"] -->|"scans all, one pass"| A0
+    IVK --> A1
+    IVK --> A2
+```
+
+### What happens when someone pays
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Merchant
+    participant Z as Zink
+    participant D as zcash-devtool<br/>(view-only, patched)
+    participant C as Zcash mainnet
+    actor P as Customer wallet
+
+    M->>Z: create invoice (amount, description)
+    Z->>D: generate-address --shielded-only
+    D-->>Z: fresh shielded-only u1…
+    Z-->>M: pay page + ZIP-321 QR
+
+    P->>C: shielded tx → u1…, memo zink:[id]
+    Note over C: Nothing public: no address,<br/>no amount, no memo, no link
+
+    loop every ZINK_SYNC_INTERVAL_MS
+        D->>C: sync via lightwalletd (Tor by default)
+    end
+    C-->>D: mined output, decrypted by the UFVK
+    D-->>Z: to_address · value · memo · mined_height
+    Z->>Z: match address + amount + zink:[id]
+    Z-->>M: invoice PAID (block, txid) → ledger → CSV
+```
+
+> The `PAID` transition above is implemented and documented, but has not yet been
+> observed against a real mined payment. See [Status, stated plainly](#status-stated-plainly).
 
 The backend is pinned to `zcash/zcash-devtool` commit
 `c8322f7e71ae46ab24801a721523ba83b27d911b`. The small patch in
 [`patches/zcash-devtool-zink.patch`](./patches/zcash-devtool-zink.patch) adds an
-Orchard-only `--shielded-only` address mode and compatibility for a
+`--shielded-only` address mode (no transparent receiver) and compatibility for a
 lightwalletd subtree-root response. CI checks that the patch still applies to
 that exact commit.
 
@@ -145,7 +232,9 @@ TAZ invoice. Obtain valueless TAZ using the current guidance in the
 [Zcash testnet guide](https://zcash.readthedocs.io/en/latest/rtd_pages/testnet_guide.html),
 then pay the generated `utest1…` target from a separate testnet spending wallet.
 After the transaction is mined and the configured confirmation depth is met,
-the invoice stamps **PAID** and appears in the ledger.
+the invoice should stamp **PAID** and appear in the ledger. This is the step
+that has not yet been confirmed against a live payment — if you run it, the
+result is worth reporting in an issue either way.
 
 ### 4. Pay from a separate testnet wallet
 
@@ -241,8 +330,11 @@ with a CSS fallback when WebGL or motion is unavailable.
 - Settlement waits for mining; there is no mempool “pending” state.
 - Partial/overpayments, refunds, fiat conversion, webhooks, and checkout embeds
   are not implemented.
-- The hosted showcase proves product UX, not live chain integration. Record a
-  separate testnet run as the technical proof for judges.
+- The hosted showcase demonstrates product UX only, not live chain integration.
+  A self-hosted run against a view-only wallet is the only path that exercises
+  real detection.
+- Settlement has not been observed end-to-end against a mined payment. See
+  [Status, stated plainly](#status-stated-plainly).
 
 ## License and credits
 

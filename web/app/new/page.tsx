@@ -35,10 +35,10 @@ export default function NewLinkPage() {
           <p className="mt-5 max-w-sm text-[14px] leading-relaxed text-ink-soft">
             {demo
               ? "Use this form to preview the customer invoice experience. The hosted site will not derive an address or contact Zcash."
-              : `Zink derives a fresh Orchard-only shielded address from your viewing key, wraps it in a ZIP-321 QR with an encrypted invoice reference, and watches ${networkName} until the payment is mined.`}
+              : `Zink derives a fresh shielded-only diversified address from your viewing key, wraps it in a ZIP-321 QR with an encrypted invoice reference, and watches ${networkName} until the payment is mined.`}
           </p>
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-faint">
-            Orchard-only · unique address · viewing-key monitored · encrypted
+            Shielded-only · unique address · viewing-key monitored · encrypted
             memo
           </p>
         </div>
