@@ -3,7 +3,15 @@
 import { useEffect, useRef } from "react";
 import QRCode from "qrcode";
 
-export function Qr({ value, size = 232 }: { value: string; size?: number }) {
+export function Qr({
+  value,
+  size = 232,
+  label = "Payment QR code",
+}: {
+  value: string;
+  size?: number;
+  label?: string;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -22,7 +30,7 @@ export function Qr({ value, size = 232 }: { value: string; size?: number }) {
     <canvas
       ref={canvasRef}
       role="img"
-      aria-label="Payment QR code"
+      aria-label={label}
       className="rounded-sm"
     />
   );

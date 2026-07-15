@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { listLinks } from "@/lib/links";
 import { zatsToDecimalZec } from "@/lib/zec";
 import { csvField } from "@/lib/csv";
-import { isAuthorizedRequest } from "@/lib/auth";
+import { isAuthMisconfigured, isAuthorizedRequest } from "@/lib/auth";
 import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (isAuthMisconfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Server misconfigured — ZINK_ADMIN_TOKEN must be at least 24 characters",
+      },
+      { status: 503 },
+    );
+  }
   if (!isAuthorizedRequest(request)) {
     return NextResponse.json(
       { error: "Unauthorized — merchant token required" },

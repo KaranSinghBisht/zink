@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createLink, listLinks } from "@/lib/links";
 import { DemoModeError } from "@/lib/demo";
 import { decimalZecToZats } from "@/lib/zec";
-import { isAuthorizedRequest } from "@/lib/auth";
-import { rateLimitExceeded } from "@/lib/ratelimit";
+import { isAuthMisconfigured, isAuthorizedRequest } from "@/lib/auth";
+import { clientRateLimitKey, rateLimitExceeded } from "@/lib/ratelimit";
 import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -11,14 +11,25 @@ export const runtime = "nodejs";
 const MAX_BODY_BYTES = 4096;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (isAuthMisconfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Server misconfigured — ZINK_ADMIN_TOKEN must be at least 24 characters",
+      },
+      { status: 503 },
+    );
+  }
   if (!isAuthorizedRequest(request)) {
     return NextResponse.json(
       { error: "Unauthorized — merchant token required" },
       { status: 401 },
     );
   }
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "local";
-  if (rateLimitExceeded(`create:${ip}`, 12)) {
+  if (
+    rateLimitExceeded("create:global", 120) ||
+    rateLimitExceeded(clientRateLimitKey("create", request.headers), 12)
+  ) {
     return NextResponse.json(
       { error: "Too many links created — slow down" },
       { status: 429 },
@@ -26,7 +37,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) {
+  if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
     return NextResponse.json({ error: "Body too large" }, { status: 413 });
   }
   let body: unknown;
@@ -91,6 +102,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (isAuthMisconfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Server misconfigured — ZINK_ADMIN_TOKEN must be at least 24 characters",
+      },
+      { status: 503 },
+    );
+  }
   if (!isAuthorizedRequest(request)) {
     return NextResponse.json(
       { error: "Unauthorized — merchant token required" },

@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/site-nav";
 import { VeilBends } from "@/components/veil-bends";
+import { getNetwork, isDemoMode } from "@/lib/config";
+import { networkLabel } from "@/lib/network";
+
+export const dynamic = "force-dynamic";
 
 const STRIP_FACTS = [
   {
@@ -9,25 +13,28 @@ const STRIP_FACTS = [
   },
   {
     tag: "02 · DIVERSIFIED",
-    text: "every invoice is a fresh shielded address — unlinkable by math.",
+    text: "every invoice is a fresh shielded address with no public address-level link.",
   },
   {
     tag: "03 · ENCRYPTED MEMO",
-    text: "reconciled automatically, with zero public metadata.",
+    text: "the invoice reference stays encrypted while the ledger reconciles automatically.",
   },
 ];
 
 export default function Home() {
+  const demo = isDemoMode();
+  const networkName = networkLabel(getNetwork());
   return (
     <div className="flex flex-1 flex-col">
-      {/* ------------------------------------------------ hero */}
-      <section className="veil relative flex min-h-svh flex-col text-cream">
-        <VeilBends />
-        <SiteNav tone="dark" />
+      <main>
+        {/* ------------------------------------------------ hero */}
+        <section className="veil relative flex min-h-svh flex-col text-cream">
+          <VeilBends />
+          <SiteNav tone="dark" />
 
         <div className="relative flex flex-1 flex-col justify-end px-6 pb-16 sm:px-10 sm:pb-20">
           <p className="rise rise-1 font-mono text-[11px] uppercase tracking-[0.3em] text-gold">
-            Non-custodial <span className="text-cream/40">·</span> Zcash mainnet{" "}
+            Non-custodial <span className="text-cream/40">·</span> Zcash {networkName}{" "}
             <span className="text-cream/40">·</span> Orchard
           </p>
           <h1 className="rise rise-2 mt-5 max-w-4xl font-display text-[15vw] font-bold leading-[0.95] tracking-tight sm:text-[9.5vw] lg:text-[7rem]">
@@ -63,10 +70,10 @@ export default function Home() {
             <div className="mt-2 text-cream/25">PROOF [ SHIELDED · MEMO ]</div>
           </div>
         </div>
-      </section>
+        </section>
 
-      {/* ---------------------------------------- statement */}
-      <section className="mx-auto w-full max-w-5xl px-6 pb-4 pt-20 sm:px-10 sm:pt-24">
+        {/* ---------------------------------------- statement */}
+        <section className="mx-auto w-full max-w-5xl px-6 pb-4 pt-20 sm:px-10 sm:pt-24">
         <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-mute">
           Public link <span className="text-faint">·</span> Shielded link
         </p>
@@ -80,15 +87,15 @@ export default function Home() {
           </span>
         </h2>
         <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-ink-soft">
-          Stripe hides that with custody — they hold your money and see
-          everything. Zcash hides it in the protocol. Zink turns one viewing key
-          into Stripe-style links where every invoice is a fresh shielded
-          address, and the ledger reconciles itself.
+          Custodial processors hide the chain trail by standing between you and
+          your money. Zcash shields transaction details in the protocol. Zink
+          turns one viewing key into familiar payment links where every invoice
+          gets a fresh shielded address and the ledger reconciles itself.
         </p>
-      </section>
+        </section>
 
-      {/* ---------------------------------------- facts strip */}
-      <section className="mx-auto grid w-full max-w-5xl gap-4 px-6 py-14 sm:px-10 md:grid-cols-3">
+        {/* ---------------------------------------- facts strip */}
+        <section className="mx-auto grid w-full max-w-5xl gap-4 px-6 py-14 sm:px-10 md:grid-cols-3">
         {STRIP_FACTS.map((fact) => (
           <div
             key={fact.tag}
@@ -110,7 +117,8 @@ export default function Home() {
             Read the cryptography →
           </Link>
         </div>
-      </section>
+        </section>
+      </main>
 
       {/* ---------------------------------------- footer */}
       <footer className="veil relative px-6 py-10 text-cream sm:px-10">
@@ -119,7 +127,9 @@ export default function Home() {
             zink<span className="text-gold">.</span> — built for ZecHub
             Hackathon 3.0
           </span>
-          <span>Zcash mainnet · view-only · MIT</span>
+          <span>
+            {demo ? "Hosted showcase" : `Zcash ${networkName}`} · view-only · MIT
+          </span>
         </div>
       </footer>
     </div>

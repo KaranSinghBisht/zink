@@ -6,13 +6,14 @@
   --color-card: #f6f3ea;
   --color-ink: #1b1712;
   --color-ink-soft: #453d31;
-  --color-mute: #7a7160;
-  --color-faint: #a29881;
+  --color-mute: #655e50;
+  --color-faint: #746c5c;
   --color-line: #ddd6c3;
   --color-gold: #f4b728;
   --color-gold-pale: #fbe9b7;
-  --color-gold-deep: #9a7414;
+  --color-gold-deep: #76570b;
   --color-cleared: #1b7c51;
+  --color-danger: #a52b2e;
   --color-night: #16110c;
   --color-night-2: #241c13;
   --color-cream: #f2ead8;
@@ -25,7 +26,7 @@ body {
   font-family: var(--font-hanken), system-ui, sans-serif;
   font-weight: 500;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizelegibility;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {

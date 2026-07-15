@@ -3,7 +3,7 @@ import { getDb } from "./db";
 import { generateShieldedAddress } from "./devtool";
 import { buildPaymentUri } from "./zip321";
 import { isDemoMode } from "./config";
-import { DEMO_LINKS, DemoModeError } from "./demo";
+import { DEMO_LINKS, DEMO_PREVIEW_LINK, DemoModeError } from "./demo";
 
 export type LinkStatus = "unpaid" | "paid";
 
@@ -115,6 +115,7 @@ export async function createLink(input: {
 
 export function getLink(id: string): PaymentLink | null {
   if (isDemoMode()) {
+    if (id === DEMO_PREVIEW_LINK.id) return DEMO_PREVIEW_LINK;
     return DEMO_LINKS.find((link) => link.id === id) ?? null;
   }
   const row = getDb().prepare("SELECT * FROM links WHERE id = ?").get(id) as

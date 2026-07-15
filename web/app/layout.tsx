@@ -24,6 +24,9 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.ZINK_BASE_URL || "https://zink-bice.vercel.app",
+  ),
   title: "Zink — payment links that never link back",
   description:
     "Non-custodial Zcash payment links. Every link is a fresh shielded address — customers pay, and learn nothing else about you.",
@@ -35,10 +38,13 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Zink — payment links that never link back",
     description:
-      "Non-custodial Zcash payment links on mainnet. Fresh shielded address per invoice.",
+      "Non-custodial Zcash payment links. Fresh shielded address per invoice.",
+  },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
 };
 

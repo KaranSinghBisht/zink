@@ -27,7 +27,7 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      className={`font-mono text-xs tracking-wide transition-colors cursor-pointer ${className}`}
+      className={`inline-flex min-h-10 cursor-pointer items-center font-mono text-xs tracking-wide transition-colors ${className}`}
     >
       {copied ? "Copied ✓" : label}
     </button>

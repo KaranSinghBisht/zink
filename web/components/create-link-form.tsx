@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { decimalZecToZats, zatsToDecimalZec } from "@/lib/zec";
 
-export function CreateLinkForm() {
+export function CreateLinkForm({
+  ticker = "ZEC",
+  showcase = false,
+}: {
+  ticker?: "ZEC" | "TAZ";
+  showcase?: boolean;
+}) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -13,6 +20,30 @@ export function CreateLinkForm() {
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
     setError(null);
+
+    if (showcase) {
+      try {
+        const amountZats = decimalZecToZats(amount);
+        if (amountZats <= 0n) throw new Error("Amount must be positive");
+
+        const query = new URLSearchParams({
+          amount: zatsToDecimalZec(amountZats),
+        });
+        const trimmedDescription = description.trim();
+        if (trimmedDescription) {
+          query.set("description", trimmedDescription);
+        }
+
+        setPending(true);
+        router.push(`/l/demo-preview?${query.toString()}`);
+      } catch {
+        setError(
+          `Enter a positive ${ticker} amount with no more than 8 decimal places.`,
+        );
+      }
+      return;
+    }
+
     setPending(true);
     try {
       const response = await fetch("/api/links", {
@@ -43,14 +74,19 @@ export function CreateLinkForm() {
           htmlFor="amount"
           className="font-mono text-[11px] uppercase tracking-[0.18em] text-mute"
         >
-          Amount (ZEC)
+          Amount ({ticker})
         </label>
         <input
           id="amount"
           name="amount"
           inputMode="decimal"
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
           placeholder="0.005"
           required
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={error ? "create-link-error" : undefined}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           className="rounded-xl border border-line bg-paper px-3.5 py-2.5 font-mono text-lg text-ink placeholder:text-faint focus:border-gold-deep"
@@ -68,26 +104,41 @@ export function CreateLinkForm() {
           name="description"
           placeholder="Design work — March invoice"
           maxLength={200}
+          autoComplete="off"
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={error ? "create-link-error" : undefined}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[15px] text-ink placeholder:text-faint focus:border-gold-deep"
         />
       </div>
       {error ? (
-        <p role="alert" className="text-sm font-medium text-[#c23234]">
+        <p
+          id="create-link-error"
+          role="alert"
+          className="text-sm font-medium text-danger"
+        >
           {error}
         </p>
       ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 cursor-pointer rounded-xl bg-ink px-4 py-3 font-display text-[15px] font-bold text-paper transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+        aria-busy={pending}
+        className="mt-1 min-h-11 cursor-pointer rounded-xl bg-ink px-4 py-3 font-display text-[15px] font-bold text-paper transition-opacity duration-100 ease-out hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {pending ? "Deriving a fresh address…" : "Create payment link"}
+        {pending
+          ? showcase
+            ? "Opening preview…"
+            : "Deriving a fresh address…"
+          : showcase
+            ? "Preview sample invoice"
+            : "Create payment link"}
       </button>
       <p className="text-[13px] leading-relaxed text-mute">
-        Each link derives a new shielded address from your viewing key. Zink
-        never holds keys that can spend.
+        {showcase
+          ? "Creates a synthetic, non-payable preview. No address is derived and nothing is saved."
+          : "Each link derives a new shielded address from your viewing key. Zink never holds keys that can spend."}
       </p>
     </form>
   );

@@ -10,7 +10,9 @@ vendor/
 
 # local tooling state
 .omc/
+.superstack/
 
 # internal pre-submission docs
 HACKATHON-AUDIT.md
 SUBMISSION-READY.html
+DEMO-SCRIPT.md

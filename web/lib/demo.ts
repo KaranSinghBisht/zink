@@ -1,33 +1,69 @@
 import type { PaymentLink } from "./links";
+import { decimalZecToZats } from "./zec";
+
+export const DEMO_PREVIEW_LINK: PaymentLink = {
+  id: "demo-preview",
+  amountZats: 500_000,
+  description: "Sample invoice preview",
+  address: "showcase-address-demo-preview-not-payable",
+  uri: "showcase:demo-preview",
+  status: "unpaid",
+  txid: null,
+  paidValueZats: null,
+  paidMemo: null,
+  minedHeight: null,
+  blockTime: null,
+  createdAt: 1_784_089_500_000,
+};
+
+export function createDemoPreviewLink(
+  amountInput?: string,
+  descriptionInput?: string,
+): PaymentLink {
+  let amountZats = BigInt(DEMO_PREVIEW_LINK.amountZats);
+  try {
+    const parsed = decimalZecToZats(amountInput ?? "");
+    if (parsed > 0n) amountZats = parsed;
+  } catch {
+    // Direct or edited preview URLs fall back to the safe sample amount.
+  }
+
+  const description =
+    descriptionInput?.trim().slice(0, 200) || DEMO_PREVIEW_LINK.description;
+
+  return {
+    ...DEMO_PREVIEW_LINK,
+    amountZats: Number(amountZats),
+    description,
+  };
+}
 
 /**
- * Sample ledger for the hosted showcase (demo mode). Addresses are real
- * mainnet Orchard-only diversified addresses derived from the project's
- * view-only wallet; the "paid" entry is illustrative sample data.
+ * Synthetic, non-payable sample ledger for the hosted showcase. Never put a
+ * real receiving address in demo mode: the hosted site has no wallet watcher,
+ * so a visitor could otherwise send funds to an invoice that can never update.
  */
 export const DEMO_LINKS: PaymentLink[] = [
   {
     id: "demo-paid-1",
     amountZats: 450_000,
     description: "Sample — design retainer",
-    address:
-      "u1598r47umlxz4839kmyjr6yv02w9fv3ggg08pa6wptm3ku90mk5ekmh5sjedarca8mgg4eec83gdm6wz2e3p8tlh8u0pc29e8as6sj0t2",
-    uri: "zcash:u1598r47umlxz4839kmyjr6yv02w9fv3ggg08pa6wptm3ku90mk5ekmh5sjedarca8mgg4eec83gdm6wz2e3p8tlh8u0pc29e8as6sj0t2?amount=0.0045&memo=emluazpkZW1vLXBhaWQtMQ",
+    address: "showcase-address-demo-paid-1-not-payable",
+    uri: "showcase:demo-paid-1",
     status: "paid",
-    txid: "9d1f4c0e7b2a58c3d6f0a1b4e8c25d7f3a690b1c4d8e2f5a7b0c3d6e9f124a5b",
+    txid: null,
     paidValueZats: 450_000,
-    paidMemo: "zink:demo-paid-1",
-    minedHeight: 3_412_681,
-    blockTime: 1_784_070_000,
+    paidMemo: null,
+    minedHeight: null,
+    blockTime: null,
     createdAt: 1_784_020_000_000,
   },
   {
     id: "demo-open-1",
     amountZats: 1_200_000,
     description: "Sample — consulting invoice",
-    address:
-      "u10maj250lrzm0zkkr9huxxj6sk8z927mg5vnpnlwal6d5js8zescdwudu6dgvpzlr6zhn9hcaxfkm9swaqgy38s42kx6ptq3ajgqkx82r",
-    uri: "zcash:u10maj250lrzm0zkkr9huxxj6sk8z927mg5vnpnlwal6d5js8zescdwudu6dgvpzlr6zhn9hcaxfkm9swaqgy38s42kx6ptq3ajgqkx82r?amount=0.012&memo=emluazpkZW1vLW9wZW4tMQ",
+    address: "showcase-address-demo-open-1-not-payable",
+    uri: "showcase:demo-open-1",
     status: "unpaid",
     txid: null,
     paidValueZats: null,
@@ -40,9 +76,8 @@ export const DEMO_LINKS: PaymentLink[] = [
     id: "demo-open-2",
     amountZats: 250_000,
     description: "Sample — workshop seat",
-    address:
-      "u19mjy3n3gv0krgzlyvrefzx4s3r3erhru7cvrrcl4zwxz6ygszdxk8pyyzrpup5awcsjhq2d8cpascfs6v0apclvxr5jzqtggmnkkgvd9h06fzkntl585dpatajmj8mmly7se82xyfyux0jlk7muw5nukjm9rjvq56gn95u4tn30h6rnkd5hz42ujk0f8u8xqghh7jktm97w2v5df8za",
-    uri: "zcash:u19mjy3n3gv0krgzlyvrefzx4s3r3erhru7cvrrcl4zwxz6ygszdxk8pyyzrpup5awcsjhq2d8cpascfs6v0apclvxr5jzqtggmnkkgvd9h06fzkntl585dpatajmj8mmly7se82xyfyux0jlk7muw5nukjm9rjvq56gn95u4tn30h6rnkd5hz42ujk0f8u8xqghh7jktm97w2v5df8za?amount=0.0025&memo=emluazpkZW1vLW9wZW4tMg",
+    address: "showcase-address-demo-open-2-not-payable",
+    uri: "showcase:demo-open-2",
     status: "unpaid",
     txid: null,
     paidValueZats: null,

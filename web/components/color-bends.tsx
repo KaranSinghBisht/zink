@@ -200,11 +200,19 @@ export default function ColorBends({
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: false,
-      powerPreference: "high-performance",
-      alpha: true,
-    });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        powerPreference: "high-performance",
+        alpha: true,
+      });
+    } catch {
+      geometry.dispose();
+      material.dispose();
+      materialRef.current = null;
+      return;
+    }
     rendererRef.current = renderer;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -213,6 +221,14 @@ export default function ColorBends({
     renderer.domElement.style.height = "100%";
     renderer.domElement.style.display = "block";
     container.appendChild(renderer.domElement);
+    let contextLost = false;
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      contextLost = true;
+      renderer.domElement.style.display = "none";
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+    renderer.domElement.addEventListener("webglcontextlost", handleContextLost);
 
     const clock = new THREE.Clock();
 
@@ -234,6 +250,7 @@ export default function ColorBends({
     }
 
     const loop = () => {
+      if (contextLost) return;
       const dt = clock.getDelta();
       const elapsed = clock.elapsedTime;
       material.uniforms.uTime.value = elapsed;
@@ -262,6 +279,10 @@ export default function ColorBends({
       else (window as Window).removeEventListener("resize", handleResize);
       geometry.dispose();
       material.dispose();
+      renderer.domElement.removeEventListener(
+        "webglcontextlost",
+        handleContextLost,
+      );
       renderer.dispose();
       renderer.forceContextLoss();
       if (

@@ -1,36 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { unifiedAddressPrefix, type ZcashNetwork } from "@/lib/network";
 
-// Real diversified addresses generated from one viewing key on mainnet —
-// mutually unlinkable per ZIP 316, which is the entire point.
-const ADDRESSES = [
+const ADDRESS_LABELS = [
   {
     who: "Customer A pays",
-    addr: "u19mjy3n3gv0krgzlyvrefzx4s3r3erhru7cvrrcl4zwxz6ygszdxk8pyyzrpup5awcsjhq2d8cpascfs6v0apclvxr5jzqtggmnkkgvd9h06fzkntl585dpatajmj8mmly7se82xyfyux0jlk7muw5nukjm9rjvq56gn95u4tn30h6rnkd5hz42ujk0f8u8xqghh7jktm97w2v5df8za",
+    suffix: "invoice-a…[redacted]",
   },
   {
     who: "Customer B pays",
-    addr: "u153agyrzaxvfvzurkyn5k6qxv0nptwgr8n0wcu97xm9q7dhr83zf8pf0pp3trh5p99dxq02mdwytgmqtgwhtszew96ffff4jddg4gr62zvmzdyla54cmdk9q3auuq39k5hq3x5ywv7t6hdmr94snyqlvhp5qdjjvtsnpe5xavhw8vzuge0mdxnj2spt0cpu275hc7k6ts4x2sca4n7l6",
+    suffix: "invoice-b…[redacted]",
   },
   {
     who: "Customer C pays",
-    addr: "u1cal5v83m48r0pr8wlpk02ky5dk8uymy59axdwuvxj5cku0g6ydgsj65lazsqnxz3trc0z8990f4wwj4v297lwcc067d5wxr707cn0l68xpgu54gqkdhesdx9e4j2guc9y6u5apvq0phy0t83fcrhhkp2z3rcnt7dg060w8h42qqm30chz8epv0lz9efju6n5mwcvasldw6n4utcc0qz",
+    suffix: "invoice-c…[redacted]",
   },
 ];
 
-export function AddressTicker() {
+export function AddressTicker({ network }: { network: ZcashNetwork }) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = setInterval(
-      () => setIndex((i) => (i + 1) % ADDRESSES.length),
+      () => setIndex((i) => (i + 1) % ADDRESS_LABELS.length),
       3200,
     );
     return () => clearInterval(timer);
   }, []);
 
-  const current = ADDRESSES[index];
+  const current = ADDRESS_LABELS[index];
 
   return (
     <div className="rounded-2xl border border-cream/15 bg-night/40 p-4">
@@ -47,12 +47,12 @@ export function AddressTicker() {
           {current.who}
         </div>
         <div className="mt-1 break-all font-mono text-[12.5px] leading-relaxed text-cream/90">
-          {current.addr}
+          {unifiedAddressPrefix(network)}…{current.suffix}
         </div>
       </div>
       <div className="mt-3 border-t border-cream/15 pt-3 text-[13px] font-medium text-cream/60">
-        Three customers, three addresses, zero connection between them — and all
-        of it lands in one wallet.
+        Three customers, three unique addresses, no public address-level link —
+        and all of it lands in one wallet.
       </div>
     </div>
   );

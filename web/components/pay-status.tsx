@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { networkLabel, type ZcashNetwork } from "@/lib/network";
 
 export interface LinkStatusPayload {
   status: "unpaid" | "paid";
@@ -12,15 +13,19 @@ export interface LinkStatusPayload {
 export function PayStatus({
   linkId,
   initial,
+  network,
+  demo = false,
 }: {
   linkId: string;
   initial: LinkStatusPayload;
+  network: ZcashNetwork;
+  demo?: boolean;
 }) {
   const [state, setState] = useState<LinkStatusPayload>(initial);
   const [watcherOk, setWatcherOk] = useState(true);
 
   useEffect(() => {
-    if (state.status === "paid") return;
+    if (demo || state.status === "paid") return;
     const timer = setInterval(async () => {
       try {
         const response = await fetch(`/api/links/${linkId}`, {
@@ -42,7 +47,7 @@ export function PayStatus({
       }
     }, 4000);
     return () => clearInterval(timer);
-  }, [linkId, state.status]);
+  }, [demo, linkId, state.status]);
 
   if (state.status === "paid") {
     return (
@@ -56,25 +61,51 @@ export function PayStatus({
             Paid
           </div>
           <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-cleared/80">
-            mined on zcash mainnet
+            {demo
+              ? "illustrative hosted sample"
+              : `mined on zcash ${networkLabel(network)}`}
           </div>
         </div>
-        <dl className="w-full space-y-1.5 border-t border-dashed border-line pt-4 font-mono text-[12px] text-ink-soft">
-          {state.minedHeight != null ? (
-            <div className="flex justify-between gap-4">
-              <dt className="uppercase tracking-[0.18em] text-mute">Block</dt>
-              <dd>{state.minedHeight.toLocaleString()}</dd>
-            </div>
-          ) : null}
-          {state.txid ? (
-            <div className="flex justify-between gap-4">
-              <dt className="uppercase tracking-[0.18em] text-mute">Tx</dt>
-              <dd className="max-w-[220px] truncate" title={state.txid}>
-                {state.txid.slice(0, 18)}…
-              </dd>
-            </div>
-          ) : null}
-        </dl>
+        {demo ? (
+          <p className="max-w-xs border-t border-dashed border-line pt-4 text-center text-[12px] leading-relaxed text-mute">
+            This state is sample data. No transaction was sent or watched by the
+            hosted showcase.
+          </p>
+        ) : (
+          <dl className="w-full space-y-1.5 border-t border-dashed border-line pt-4 font-mono text-[12px] text-ink-soft">
+            {state.minedHeight != null ? (
+              <div className="flex justify-between gap-4">
+                <dt className="uppercase tracking-[0.18em] text-mute">Block</dt>
+                <dd>{state.minedHeight.toLocaleString()}</dd>
+              </div>
+            ) : null}
+            {state.txid ? (
+              <div className="flex justify-between gap-4">
+                <dt className="uppercase tracking-[0.18em] text-mute">Tx</dt>
+                <dd className="max-w-[220px] truncate" title={state.txid}>
+                  {state.txid.slice(0, 18)}…
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        )}
+      </div>
+    );
+  }
+
+  if (demo) {
+    return (
+      <div
+        role="status"
+        className="flex flex-col items-center gap-2 py-3 text-center"
+      >
+        <span className="rounded-md border border-gold-deep/40 bg-gold-pale/35 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-gold-deep">
+          Showcase state · payments disabled
+        </span>
+        <p className="max-w-xs text-[11.5px] leading-relaxed text-mute">
+          Run Zink beside a view-only wallet to watch a real{" "}
+          {networkLabel(network)} payment clear.
+        </p>
       </div>
     );
   }
@@ -89,7 +120,7 @@ export function PayStatus({
         <span
           aria-hidden
           className={`sonar h-2.5 w-2.5 rounded-full ${
-            watcherOk ? "bg-gold-deep" : "bg-[#c23234]"
+            watcherOk ? "bg-gold-deep" : "bg-danger"
           }`}
         />
         <span className="font-mono text-[12px] uppercase tracking-[0.2em] text-mute">
@@ -100,9 +131,9 @@ export function PayStatus({
       </div>
       {!watcherOk ? (
         <p className="max-w-xs text-center text-[11.5px] leading-relaxed text-faint">
-          The payment watcher hasn&apos;t completed a mainnet sync recently.
-          Your payment is safe on-chain; this page will update once sync
-          recovers.
+          The payment watcher hasn&apos;t completed a {networkLabel(network)} sync
+          recently. Your payment is safe on-chain; this page will update once
+          sync recovers.
         </p>
       ) : null}
     </div>

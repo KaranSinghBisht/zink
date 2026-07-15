@@ -3,11 +3,38 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function AdminLogin() {
+export function AdminLogin({
+  configurationError = false,
+}: {
+  configurationError?: boolean;
+}) {
   const router = useRouter();
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+
+  if (configurationError) {
+    return (
+      <main className="veil flex flex-1 items-center justify-center px-4 py-10">
+        <div className="veil-lines" />
+        <div className="rise w-full max-w-md rounded-3xl border border-line bg-card p-7 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.7)]">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gold-deep">
+            Configuration required
+          </p>
+          <h1 className="mt-2 font-display text-xl font-semibold">
+            Dashboard locked safely
+          </h1>
+          <p className="mt-2 text-[13px] leading-relaxed text-mute">
+            A real wallet is configured, but{" "}
+            <code className="font-mono">ZINK_ADMIN_TOKEN</code> is missing. Set
+            a random token of at least 24 characters and restart Zink; merchant
+            routes remain closed until then.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
@@ -33,7 +60,7 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="veil flex flex-1 items-center justify-center px-4 py-10">
+    <main className="veil flex flex-1 items-center justify-center px-4 py-10">
       <div className="veil-lines" />
       <form
         onSubmit={submit}
@@ -55,17 +82,27 @@ export function AdminLogin() {
         >
           Admin token
         </label>
-        <input
-          id="admin-token"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 font-mono text-[15px] text-ink placeholder:text-faint focus:border-gold-deep"
-        />
+        <div className="relative mt-1.5">
+          <input
+            id="admin-token"
+            type={showToken ? "text" : "password"}
+            autoComplete="current-password"
+            required
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 pr-16 font-mono text-[15px] text-ink placeholder:text-faint focus:border-gold-deep"
+          />
+          <button
+            type="button"
+            onClick={() => setShowToken((value) => !value)}
+            aria-label={showToken ? "Hide admin token" : "Show admin token"}
+            className="absolute inset-y-0 right-0 min-w-14 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-mute hover:text-ink"
+          >
+            {showToken ? "Hide" : "Show"}
+          </button>
+        </div>
         {error ? (
-          <p role="alert" className="mt-3 text-sm font-medium text-[#c23234]">
+          <p role="alert" className="mt-3 text-sm font-medium text-danger">
             {error}
           </p>
         ) : null}
@@ -77,6 +114,6 @@ export function AdminLogin() {
           {pending ? "Checking…" : "Unlock dashboard"}
         </button>
       </form>
-    </div>
+    </main>
   );
 }

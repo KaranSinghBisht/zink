@@ -23,9 +23,14 @@ export async function GET(
     }
     // Public endpoint: anyone with the invoice URL can poll status, so only
     // a redacted DTO is returned (no memo contents, no merchant fields).
+    const demo = isDemoMode();
+    const publicStatus = toPublicStatus(link);
     return NextResponse.json({
-      link: toPublicStatus(link),
-      watcherOk: isDemoMode() ? true : isWatcherHealthy(),
+      link: demo
+        ? { ...publicStatus, txid: null, minedHeight: null }
+        : publicStatus,
+      watcherOk: demo ? true : isWatcherHealthy(),
+      showcase: demo,
     });
   } catch (err) {
     log.error("link fetch failed", err);

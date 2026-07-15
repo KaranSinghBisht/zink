@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { isDemoMode } from "@/lib/config";
+import { getNetwork, isDemoMode } from "@/lib/config";
+import { networkLabel, networkTicker } from "@/lib/network";
 import { SiteNav } from "@/components/site-nav";
 import { CreateLinkForm } from "@/components/create-link-form";
 
@@ -12,6 +13,9 @@ export const metadata: Metadata = {
 
 export default function NewLinkPage() {
   const demo = isDemoMode();
+  const network = getNetwork();
+  const networkName = networkLabel(network);
+  const ticker = networkTicker(network);
   return (
     <div className="flex flex-1 flex-col">
       <SiteNav tone="light" />
@@ -19,7 +23,9 @@ export default function NewLinkPage() {
         <div className="md:pt-10">
           <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gold-deep">
             New link{" "}
-            <span className="text-faint">[ one second · mainnet ]</span>
+            <span className="text-faint">
+              [ {demo ? "showcase · no chain" : `one second · ${networkName}`} ]
+            </span>
           </p>
           <h1 className="mt-3 font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">
             get paid.
@@ -27,9 +33,9 @@ export default function NewLinkPage() {
             <span className="text-mute">reveal nothing.</span>
           </h1>
           <p className="mt-5 max-w-sm text-[14px] leading-relaxed text-ink-soft">
-            Zink derives a fresh Orchard-only shielded address from your viewing
-            key, wraps it in a ZIP-321 QR with an encrypted invoice reference,
-            and watches mainnet until the payment is mined.
+            {demo
+              ? "Use this form to preview the customer invoice experience. The hosted site will not derive an address or contact Zcash."
+              : `Zink derives a fresh Orchard-only shielded address from your viewing key, wraps it in a ZIP-321 QR with an encrypted invoice reference, and watches ${networkName} until the payment is mined.`}
           </p>
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-faint">
             Orchard-only · unique address · viewing-key monitored · encrypted
@@ -44,26 +50,44 @@ export default function NewLinkPage() {
                 Hosted showcase
               </p>
               <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
-                Link creation runs on the merchant&apos;s own instance next to a
-                view-only wallet. Browse the{" "}
+                Try the form to generate a synthetic invoice preview. It will
+                not create an address or accept payment. The{" "}
                 <Link
                   href="/dash"
                   className="font-semibold text-gold-deep underline"
                 >
                   sample ledger
                 </Link>{" "}
-                and{" "}
+                shows the merchant side; you can also open{" "}
                 <Link
                   href="/l/demo-open-1"
                   className="font-semibold text-gold-deep underline"
                 >
-                  a live invoice page
+                  a pre-filled sample
                 </Link>
-                , or clone the repo to run the full mainnet flow.
+                . Clone the repo to run the full {networkName} flow.
               </p>
             </div>
-          ) : null}
-          <CreateLinkForm />
+          ) : (
+            <div className="mb-6 rounded-xl border border-cleared/30 bg-cleared/5 px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-cleared">
+                  Merchant workspace
+                </p>
+                <span className="rounded border border-cleared/25 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-cleared">
+                  {networkName}
+                </span>
+                <span className="rounded border border-line bg-card px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-mute">
+                  view only
+                </span>
+              </div>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">
+                A merchant viewing wallet is configured. Zink can derive and
+                reconcile incoming {ticker}, but it has no authority to spend.
+              </p>
+            </div>
+          )}
+          <CreateLinkForm ticker={ticker} showcase={demo} />
         </div>
       </main>
     </div>

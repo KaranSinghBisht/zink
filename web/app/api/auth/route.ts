@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE, isLocalMode, secretMatches } from "@/lib/auth";
-import { rateLimitExceeded } from "@/lib/ratelimit";
+import {
+  ADMIN_COOKIE,
+  createAdminSession,
+  isAuthMisconfigured,
+  isLocalMode,
+  secretMatches,
+} from "@/lib/auth";
+import { clientRateLimitKey, rateLimitExceeded } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -8,8 +14,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (isLocalMode()) {
     return NextResponse.json({ ok: true, localMode: true });
   }
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "local";
-  if (rateLimitExceeded(`auth:${ip}`, 10)) {
+  if (isAuthMisconfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Server misconfigured — ZINK_ADMIN_TOKEN must be at least 24 characters",
+      },
+      { status: 503 },
+    );
+  }
+  if (
+    rateLimitExceeded("auth:global", 60) ||
+    rateLimitExceeded(clientRateLimitKey("auth", request.headers), 10)
+  ) {
     return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
   }
   let body: unknown;
@@ -23,7 +40,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(ADMIN_COOKIE, token, {
+  response.cookies.set(ADMIN_COOKIE, createAdminSession(), {
     httpOnly: true,
     sameSite: "strict",
     secure: request.nextUrl.protocol === "https:",

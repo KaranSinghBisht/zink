@@ -3,12 +3,15 @@ import Link from "next/link";
 import { SiteNav } from "@/components/site-nav";
 import { VeilBends } from "@/components/veil-bends";
 import { AddressTicker } from "@/components/address-ticker";
+import { getNetwork } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Protocol — Zink",
   description:
     "How Zink keeps merchant payments private: viewing keys, ZIP-316 diversified addresses, encrypted memos, ZIP-321 URIs.",
 };
+
+export const dynamic = "force-dynamic";
 
 const PROTOCOL_FACTS = [
   {
@@ -42,6 +45,7 @@ const PROTOCOL_FACTS = [
 ];
 
 export default function ProtocolPage() {
+  const network = getNetwork();
   return (
     <div className="flex flex-1 flex-col">
       <section className="veil relative text-cream">
@@ -92,7 +96,7 @@ export default function ProtocolPage() {
             One wallet <span className="text-cream/30">[ many faces ]</span>
           </p>
           <div className="relative mt-5">
-            <AddressTicker />
+            <AddressTicker network={network} />
           </div>
         </div>
 

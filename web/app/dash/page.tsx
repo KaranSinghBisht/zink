@@ -2,19 +2,26 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { listLinks } from "@/lib/links";
-import { isDemoMode } from "@/lib/config";
+import { getNetwork, isDemoMode } from "@/lib/config";
+import { networkLabel, networkTicker } from "@/lib/network";
 import { requestOrigin } from "@/lib/origin";
 import { zatsToDecimalZec } from "@/lib/zec";
 import { getSyncHealth, syncAgeLabel } from "@/lib/health";
-import { ADMIN_COOKIE, isAuthorizedCookie } from "@/lib/auth";
+import {
+  ADMIN_COOKIE,
+  isAuthMisconfigured,
+  isAuthorizedCookie,
+} from "@/lib/auth";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { AdminLogin } from "@/components/admin-login";
 import { CopyButton } from "@/components/copy-button";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Dashboard — Zink",
+  robots: { index: false, follow: false },
 };
 
 function StatusBadge({ status }: { status: "unpaid" | "paid" }) {
@@ -32,8 +39,8 @@ function StatusBadge({ status }: { status: "unpaid" | "paid" }) {
   );
 }
 
-function SyncHealthBadge() {
-  if (isDemoMode()) {
+function SyncHealthBadge({ demo }: { demo: boolean }) {
+  if (demo) {
     return (
       <span className="inline-flex items-center gap-2 rounded-md border border-gold-deep/30 bg-gold-pale/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-gold-deep">
         <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gold-deep" />
@@ -44,8 +51,8 @@ function SyncHealthBadge() {
   const { lastSyncAt, lastError } = getSyncHealth();
   if (lastError) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-md border border-[#c23234]/30 bg-[#c23234]/5 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[#c23234]">
-        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[#c23234]" />
+      <span className="inline-flex items-center gap-2 rounded-md border border-danger/30 bg-danger/5 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-danger">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-danger" />
         Sync error — retrying
       </span>
     );
@@ -68,6 +75,13 @@ function SyncHealthBadge() {
 }
 
 export default async function DashboardPage() {
+  const demo = isDemoMode();
+  const network = getNetwork();
+  const networkName = networkLabel(network);
+  const ticker = networkTicker(network);
+  if (isAuthMisconfigured()) {
+    return <AdminLogin configurationError />;
+  }
   const cookieStore = await cookies();
   if (!isAuthorizedCookie(cookieStore.get(ADMIN_COOKIE)?.value)) {
     return <AdminLogin />;
@@ -83,24 +97,33 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 sm:px-8">
-      <AutoRefresh />
+      {demo ? null : <AutoRefresh />}
       <header className="flex items-center justify-between py-6">
-        <Link
-          href="/"
-          className="font-display text-2xl font-bold tracking-tight"
-        >
-          zink<span className="text-gold-deep">.</span>
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/"
+            className="font-display text-2xl font-bold tracking-tight"
+          >
+            zink<span className="text-gold-deep">.</span>
+          </Link>
+          <span className="rounded border border-line px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-mute">
+            {demo ? "showcase" : networkName}
+          </span>
+        </div>
         <nav className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.22em] text-mute">
-          <Link href="/new" className="transition-colors hover:text-ink">
+          <Link
+            href="/new"
+            className="inline-flex min-h-10 items-center transition-colors hover:text-ink"
+          >
             New link
           </Link>
           <a
             href="/api/export"
-            className="rounded-lg border border-line bg-card px-2.5 py-1.5 transition-colors hover:border-gold-deep hover:text-ink"
+            className="inline-flex min-h-10 items-center rounded-lg border border-line bg-card px-2.5 py-1.5 transition-colors hover:border-gold-deep hover:text-ink"
           >
             Export CSV
           </a>
+          {demo ? null : <SignOutButton />}
         </nav>
       </header>
 
@@ -123,7 +146,7 @@ export default async function DashboardPage() {
             <p className="mt-1.5 font-mono text-3xl font-semibold text-ink">
               {zatsToDecimalZec(BigInt(collectedZats))}
               <span className="ml-1.5 text-sm font-medium text-ink/60">
-                ZEC
+                {ticker}
               </span>
             </p>
           </div>
@@ -191,7 +214,9 @@ export default async function DashboardPage() {
                       <StatusBadge status={link.status} />
                     </td>
                     <td className="px-4 py-3 font-mono text-[12px] text-mute">
-                      {link.minedHeight?.toLocaleString() ?? "—"}
+                      {demo
+                        ? "—"
+                        : (link.minedHeight?.toLocaleString() ?? "—")}
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -219,7 +244,7 @@ export default async function DashboardPage() {
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">
             Reconciled live from the shielded pool via your viewing key.
           </p>
-          <SyncHealthBadge />
+          <SyncHealthBadge demo={demo} />
         </div>
       </main>
     </div>

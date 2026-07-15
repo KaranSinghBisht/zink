@@ -1,161 +1,253 @@
 # zink.
 
-**Payment links that never link back.**
+**Private Zcash payment links that reconcile themselves.**
 
-Zink is non-custodial payment-link infrastructure for Zcash. A merchant configures a
-view-only wallet from their **Unified Full Viewing Key** — never a spending key — and
-gets Stripe-style payment links. Every link derives a **fresh diversified shielded address** ([ZIP-316](https://zips.z.cash/zip-0316)),
-so no customer can connect one invoice to another, to the merchant's balance, or to
-anyone else who has ever paid them. Payments are detected live on **Zcash mainnet**
-through the viewing key and reconciled into a dashboard with CSV export.
+[![CI](https://github.com/KaranSinghBisht/zink/actions/workflows/ci.yml/badge.svg)](https://github.com/KaranSinghBisht/zink/actions/workflows/ci.yml)
+[![Live showcase](https://img.shields.io/badge/live-showcase-f4b728)](https://zink-bice.vercel.app/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-16110c.svg)](./LICENSE)
 
-Built for **ZecHub Hackathon 3.0** — Accounting track (payment management).
+Zink lets a merchant create a familiar payment link without publishing a
+reusable address. Each invoice gets a fresh Orchard-only diversified address,
+the customer pays through a ZIP-321 URI, and a view-only wallet marks the right
+invoice paid after it is mined. The Zink process can observe incoming payments;
+it cannot spend them.
 
-**Live showcase:** [zink-bice.vercel.app](https://zink-bice.vercel.app) — a hosted,
-read-only deployment with a sample ledger (serverless hosts can't run the wallet
-sync). The full mainnet flow — real link creation, live payment detection — runs
-locally next to a view-only wallet; see [Quick start](#quick-start) below.
+Built for **ZecHub Hackathon 3.0**, Accounting track.
 
-## Why this is only possible on Zcash
+- **Try the UI:** [zink-bice.vercel.app](https://zink-bice.vercel.app/)
+- **Run the complete flow:** use Zcash testnet with the guide below
 
-On transparent chains a payment link *is* your address: every customer can read your
-balance, your revenue history, and everyone else who paid you. Stripe solves that with
-custody — they hold your money and see everything. Zcash solves it in the protocol:
+> The hosted Vercel deployment is an explicitly non-payable showcase. Its
+> ledger, addresses, transaction state, and QR targets are synthetic because a
+> serverless deployment does not run the long-lived wallet sync worker. Run
+> Zink beside a view-only wallet for real testnet or mainnet detection.
 
-- **Diversified addresses** (ZIP-316): one wallet key yields billions of shielded
-  addresses that are cryptographically unlinkable — and one incoming viewing key scans
-  *all of them* in a single pass. Zink assigns one per invoice.
-- **Viewing keys**: Zink's server can *watch* payments arrive but can never spend.
-  Non-custodial by construction, not by promise.
-- **Encrypted memos** ([ZIP-302](https://zips.z.cash/zip-0302)): each payment carries its
-  invoice reference (`zink:<id>`), visible only to payer and merchant, enabling automatic
-  reconciliation with zero public metadata.
-- **ZIP-321 payment URIs**: the QR your customer scans encodes address + amount + memo;
-  works with Zashi, YWallet, and any standards-compliant wallet.
+## The 30-second judge version
 
-## How it works
+A reusable transparent payment address exposes a merchant's public transaction
+graph. Zink instead creates a fresh shielded address per invoice. A Unified Full
+Viewing Key lets the merchant server detect and reconcile incoming payments,
+while the spending key stays elsewhere. The payment memo carries an encrypted
+`zink:<invoice-id>` reference, so the ledger knows which invoice cleared without
+placing the reference on the public chain.
 
+## What works
+
+| Capability | Hosted showcase | Self-hosted testnet/mainnet |
+|---|---:|---:|
+| Landing, protocol explainer, responsive invoice UI | Yes | Yes |
+| Sample dashboard and CSV UX | Yes, synthetic | Yes, real data |
+| Build and share a custom invoice preview | Yes, synthetic | Yes |
+| Create a fresh Orchard-only address | Disabled | Yes |
+| ZIP-321 QR/deep link with amount + encrypted memo | Disabled | Yes |
+| Detect mined shielded payments | Disabled | Yes |
+| `main` / `test` network separation | UI defaults to main | Yes |
+| Merchant authentication | Not needed for synthetic data | Required, fail-closed |
+
+Network handling is explicit end to end: `main` expects `u1…` addresses and
+displays `ZEC`; `test` expects `utest1…` addresses and displays `TAZ`. Output
+from the wallet backend is rejected if it belongs to the wrong network, and
+startup fails if `ZINK_NETWORK` disagrees with the network in the wallet's
+`keys.toml`.
+
+## Why Zcash
+
+- **Diversified Unified Addresses ([ZIP-316](https://zips.z.cash/zip-0316))**:
+  every invoice can use a unique shielded address without managing a new seed.
+- **Unified Full Viewing Keys**: one online process can watch all of those
+  addresses, but it has no authority to spend.
+- **Encrypted memos ([ZIP-302](https://zips.z.cash/zip-0302))**: the invoice
+  reference is readable by the transaction participants, not public observers.
+- **Payment URIs ([ZIP-321](https://zips.z.cash/zip-0321))**: address, amount,
+  and memo travel in one scannable request.
+
+Zink does not claim that every possible side channel disappears. It removes the
+public address-level linkage and public transaction detail that a transparent
+payment link creates; merchants must still avoid identifying descriptions,
+unsafe hosting, and operational metadata leaks.
+
+## Architecture
+
+```text
+customer wallet
+      │  ZIP-321: shielded address + amount + encrypted memo
+      ▼
+Zcash shielded pool
+      │  mined transaction
+      ▼
+patched zcash-devtool ── syncs through lightwalletd (Tor by default)
+      │
+      ├── view-only wallet SQLite (received outputs and decrypted memos)
+      │
+      ▼
+Zink sync worker ── matches address + amount + zink:<id>
+      │
+      └── Zink SQLite ── pay page / merchant ledger / CSV export
 ```
-┌────────────┐   POST /api/links    ┌──────────────────────────────┐
-│  Next.js   │ ───────────────────▶ │ zcash-devtool (vendored)     │
-│  web + API │   generate-address   │ · derives UA at next         │
-│            │ ◀─────────────────── │   diversifier index          │
-│  pay page  │                      │   (--shielded-only, Orchard) │
-│  dashboard │   sync loop (20s)    │ · syncs view-only wallet     │
-│  CSV       │ ───────────────────▶ │   from lightwalletd (Tor)    │
-└─────┬──────┘                      └──────────────┬───────────────┘
-      │         SQL: v_tx_outputs ⋈ v_transactions │
-      └────────────◀ data.sqlite (zcash_client_sqlite) ◀───────────┘
-```
 
-- The wallet database (`zcash_client_sqlite`) is the single source of truth: the sync
-  loop scans mainnet through the viewing key, and payment detection is a SQL query over
-  received outputs (`to_address`, `value`, decrypted `memo`), matched to issued links.
-- The devtool connects to lightwalletd **over Tor** by default.
+The backend is pinned to `zcash/zcash-devtool` commit
+`c8322f7e71ae46ab24801a721523ba83b27d911b`. The small patch in
+[`patches/zcash-devtool-zink.patch`](./patches/zcash-devtool-zink.patch) adds an
+Orchard-only `--shielded-only` address mode and compatibility for a
+lightwalletd subtree-root response. CI checks that the patch still applies to
+that exact commit.
 
-## Quick start
+## Testnet quick start (recommended)
 
-Prerequisites: Rust (1.87+), Node 22+, `pnpm`.
+Testnet coins are valueless TAZ, so this is the safe path for a live demo.
+Prerequisites: Rust, Node.js 22+, Git, and pnpm 11+.
 
-### 1. Build the wallet backend
+### 1. Build the pinned wallet backend
 
 ```bash
-git clone https://github.com/zcash/zcash-devtool.git vendor/zcash-devtool
-cd vendor/zcash-devtool
-git checkout c8322f7e71ae46ab24801a721523ba83b27d911b
-git apply ../../patches/zcash-devtool-zink.patch
-cargo build --release
-cd ../..
+./scripts/bootstrap-devtool.sh
 ```
 
-The patch (~90 lines) adds two things: a `--shielded-only` flag for
-`generate-address` (Orchard-only receivers, required for unlinkability), and tolerance
-for lightwalletd servers that reject Ironwood subtree-root requests.
+The script refuses to overwrite an existing checkout, fetches the exact commit,
+applies the reviewed patch, and builds a release binary.
 
-### 2. Create wallets (mainnet)
+### 2. Create a testnet merchant wallet and a view-only copy
 
 ```bash
 DEVTOOL=vendor/zcash-devtool/target/release/zcash-devtool
 
-# Merchant wallet — generates a 24-word mnemonic, encrypted with an age identity.
-# Press Enter at the prompt to generate a fresh mnemonic.
-$DEVTOOL wallet -w wallets/merchant init --name merchant -i wallets/merchant.age -n main -s zecrocks
+# Spending wallet. Keep this directory and identity away from the Zink host.
+$DEVTOOL wallet -w wallets/merchant-test init \
+  --name merchant-test \
+  --identity wallets/merchant-test.age \
+  --network test \
+  --server zecrocks
 
-# Print the account's UFVK (viewing key), then import it into a view-only wallet:
-$DEVTOOL wallet -w wallets/merchant list-accounts
-$DEVTOOL wallet -w wallets/zink-view init-fvk --name zink --fvk "uview1..." -s zecrocks
+# Copy the printed uviewtest1… UFVK, then import only that key into Zink's wallet.
+$DEVTOOL wallet -w wallets/merchant-test list-accounts
+$DEVTOOL wallet -w wallets/zink-view-test init-fvk \
+  --name zink-view-test \
+  --fvk "uviewtest1…" \
+  --server zecrocks
 ```
 
-Already have a wallet (YWallet, Zashi, zallet)? Export its UFVK and start at `init-fvk`.
-Zink only ever touches the view-only wallet.
+`init-fvk` infers testnet from the UFVK. Use separate wallet and database
+directories for testnet and mainnet; never point both networks at one database.
 
-### 3. Run Zink
+### 3. Configure and run Zink
 
 ```bash
 cd web
-cp .env.example .env.local   # adjust paths if you changed them
-pnpm install
-pnpm dev                     # http://localhost:3000
+cp .env.example .env.local
+# Set a long random ZINK_ADMIN_TOKEN before starting.
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-## Usage
+The example configuration starts with `ZINK_NETWORK=test`. Open
+`http://localhost:3000`, sign into the ledger with the admin token, and create a
+TAZ invoice. Obtain valueless TAZ using the current guidance in the
+[Zcash testnet guide](https://zcash.readthedocs.io/en/latest/rtd_pages/testnet_guide.html),
+then pay the generated `utest1…` target from a separate testnet spending wallet.
+After the transaction is mined and the configured confirmation depth is met,
+the invoice stamps **PAID** and appears in the ledger.
 
-1. **Create a link** on the home page: amount in ZEC plus a description.
-2. **Share** `http://<host>/l/<id>` — the pay page shows a ZIP-321 QR, an
-   `Open in wallet` deep link, and the shielded address with copy button.
-3. **Customer pays** from any shielded-capable wallet (Zashi, YWallet, …).
-4. Within a sync cycle of the transaction being mined, the pay page **stamps PAID**
-   (block height + txid shown) and the dashboard updates totals.
-5. **Export CSV** from the dashboard for bookkeeping.
+### 4. Pay from a separate testnet wallet
+
+Keep the payer separate from the merchant viewing wallet. Create and fund a
+second testnet spending wallet, then use the invoice page's **Copy ZIP-321**
+action with the wallet backend's standards-compatible payment command:
+
+```bash
+$DEVTOOL wallet -w wallets/payer-test init \
+  --name payer-test \
+  --identity wallets/payer-test.age \
+  --network test \
+  --server zecrocks
+
+# Fund an address from this wallet with valueless TAZ, wait for it to become
+# spendable, then paste the copied ZIP-321 request below.
+$DEVTOOL wallet -w wallets/payer-test generate-address --shielded-only
+$DEVTOOL wallet -w wallets/payer-test sync --server zecrocks
+$DEVTOOL wallet -w wallets/payer-test pay \
+  --identity wallets/payer-test.age \
+  --payment-uri 'zcash:utest1…?amount=0.001&memo=…' \
+  --server zecrocks
+```
+
+The merchant spending wallet, payer spending wallet, and Zink view-only wallet
+must use separate directories. Never place a seed phrase, spending key, UFVK,
+admin token, or wallet path in a screenshot or recording.
+
+### Mainnet
+
+Use a completely separate wallet directory, set `ZINK_NETWORK=main`, import a
+`uview1…` UFVK, and restart. Mainnet is intentionally not the recommended demo
+path. Start with a negligible amount and verify backups and permissions first.
 
 ## Configuration
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `ZINK_DEVTOOL_BIN` | Path to the patched `zcash-devtool` binary | — (required) |
-| `ZINK_WALLET_DIR` | View-only wallet directory | — (required) |
-| `ZINK_DB_PATH` | Zink's own SQLite (links) | `<wallet dir>/zink.sqlite` |
-| `ZINK_SERVER` | lightwalletd server set (`zecrocks`, `ywallet`) | `zecrocks` |
-| `ZINK_BASE_URL` | Public base URL for links | `http://localhost:3000` |
-| `ZINK_SYNC_INTERVAL_MS` | Sync/detect loop interval | `20000` |
-| `ZINK_MIN_CONFIRMATIONS` | Confirmations required before an invoice is marked paid | `1` |
-| `ZINK_ADMIN_TOKEN` | Merchant token gating the dashboard, link creation/listing, and CSV export. **Required for any non-local deployment.** | unset (open, local use only) |
+| `ZINK_DEVTOOL_BIN` | Patched wallet binary | required |
+| `ZINK_WALLET_DIR` | View-only wallet directory | required for real mode |
+| `ZINK_DB_PATH` | Zink invoice database | `<wallet>/zink.sqlite` |
+| `ZINK_NETWORK` | `main` or `test` | `main` |
+| `ZINK_SERVER` | lightwalletd set (`zecrocks`; `ywallet` is mainnet-only upstream) | `zecrocks` |
+| `ZINK_BASE_URL` | Public origin used in shared links | `http://localhost:3000` |
+| `ZINK_SYNC_INTERVAL_MS` | Poll interval, 5,000–300,000 ms | `20000` |
+| `ZINK_MIN_CONFIRMATIONS` | Required mined confirmations, 1–100 | `1` |
+| `ZINK_ADMIN_TOKEN` | Merchant root secret | required whenever a wallet is configured |
+| `ZINK_TRUST_PROXY` | Trust one sanitizing reverse proxy for client IPs | `0` |
+| `ZINK_DEBUG` | Verbose server logs | `0` |
 
-## Security notes
+Generate the admin token with a password manager or, for example,
+`openssl rand -base64 32`. Zink exchanges it for a signed, HttpOnly, SameSite
+session that expires after 12 hours; the root token is not stored in the cookie.
 
-- The server holds a **viewing key only**. A total compromise of the Zink host can leak
-  payment *metadata* (who was invoiced what), never funds.
-- Spending keys stay in the merchant wallet (age-encrypted mnemonic) and are never read
-  by Zink. Keep wallet directories and key/database files owner-only (`chmod 700` /
-  `chmod 600`), and keep the spending wallet off the Zink host entirely in production.
-- Invoice addresses are Orchard-only unified addresses: no transparent receiver, so a
-  paying wallet cannot accidentally make the payment public.
-- Merchant surfaces (dashboard, link list, CSV export, link creation) are gated by
-  `ZINK_ADMIN_TOKEN`; only the pay page and a redacted status endpoint are public.
-  The public status endpoint never returns decrypted memo contents.
-- An invoice is only marked **paid** once the payment is mined with at least
-  `ZINK_MIN_CONFIRMATIONS` confirmations — mempool transactions never settle a link.
-- Amounts are validated against the ZEC decimal format and Zcash's monetary range
-  before an address is derived. Link creation is rate-limited.
-- CSV export neutralizes spreadsheet formula prefixes, and responses carry standard
-  browser security headers (CSP, frame denial, nosniff, no-referrer).
-- Inputs are validated at the API boundary; errors never echo key material.
+## Security model
 
-## Limitations & roadmap
+- The application process receives a **UFVK only**, never a spending key.
+- A compromised Zink host can expose private payment metadata and viewing
+  capability. It should not be able to move funds.
+- Real-wallet mode refuses merchant access if `ZINK_ADMIN_TOKEN` is absent.
+- Public status responses exclude addresses, descriptions, and decrypted memos.
+- Invoice settlement requires a mined output and the configured confirmations.
+- Amounts use integer zatoshis and are bounded by Zcash's monetary range.
+- CSV values are neutralized against spreadsheet-formula injection.
+- Security headers deny framing, sniffing, and broad browser capabilities.
+- Rate limiting ignores caller-supplied forwarding headers unless one trusted
+  reverse proxy is explicitly configured.
 
-- One merchant account per instance (multi-tenant would need per-tenant wallet dirs).
-- Detection requires the payment to be mined (~75 s block time); mempool detection is a
-  natural next step via lightwalletd mempool streaming.
-- Fiat display, partial payments, and an embeddable checkout widget are out of scope for
-  the hackathon build.
+The upstream `zcash-devtool` project explicitly describes itself as a
+prototyping tool and **not production-ready**. Zink is therefore a strong
+hackathon prototype, not audited production payment infrastructure. A production
+release should replace/harden that boundary, add a shared rate-limit store,
+encrypted-at-rest merchant data, backups, monitoring, and an independent audit.
 
-## License
+## Development
 
-[MIT](./LICENSE)
+```bash
+cd web
+pnpm lint
+pnpm test     # network, auth, settlement, and showcase-safety coverage
+pnpm build
+pnpm audit --prod
+```
 
-## Credits
+CI also verifies the upstream wallet patch against its pinned commit. The web
+app uses Next.js 16, React 19, TypeScript, Tailwind CSS, SQLite, and Three.js
+with a CSS fallback when WebGL or motion is unavailable.
 
-Built on [zcash-devtool](https://github.com/zcash/zcash-devtool),
-[librustzcash](https://github.com/zcash/librustzcash) (`zcash_client_sqlite`,
-`zcash_keys`), [lightwalletd infrastructure by zec.rocks](https://zec.rocks), and the
-ZIPs. Thanks to ZecHub for running the hackathon.
+## Current limitations
+
+- Single merchant and a single long-lived Node process per instance.
+- SQLite and in-memory rate limits are not suitable for multi-replica hosting.
+- Settlement waits for mining; there is no mempool “pending” state.
+- Partial/overpayments, refunds, fiat conversion, webhooks, and checkout embeds
+  are not implemented.
+- The hosted showcase proves product UX, not live chain integration. Record a
+  separate testnet run as the technical proof for judges.
+
+## License and credits
+
+[MIT](./LICENSE). Built on
+[zcash-devtool](https://github.com/zcash/zcash-devtool),
+[librustzcash](https://github.com/zcash/librustzcash), the Zcash ZIPs, and
+lightwalletd infrastructure provided through the upstream server sets. Thanks
+to ZecHub for the hackathon.

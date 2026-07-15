@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 
 const ColorBends = dynamic(() => import("./color-bends"), { ssr: false });
 
@@ -18,6 +19,36 @@ export function VeilBends({
   speed?: number;
   className?: string;
 }) {
+  const [canAnimate, setCanAnimate] = useState(false);
+
+  useEffect(() => {
+    const wideScreen = window.matchMedia("(min-width: 768px)");
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+    const update = () => {
+      let webgl = false;
+      try {
+        const canvas = document.createElement("canvas");
+        webgl = Boolean(
+          canvas.getContext("webgl2") || canvas.getContext("webgl"),
+        );
+      } catch {
+        webgl = false;
+      }
+      setCanAnimate(wideScreen.matches && !reducedMotion.matches && webgl);
+    };
+    update();
+    wideScreen.addEventListener("change", update);
+    reducedMotion.addEventListener("change", update);
+    return () => {
+      wideScreen.removeEventListener("change", update);
+      reducedMotion.removeEventListener("change", update);
+    };
+  }, []);
+
+  if (!canAnimate) return null;
+
   return (
     <div
       aria-hidden
