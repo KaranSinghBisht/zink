@@ -33,12 +33,18 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-4 py-10">
+    <div className="veil flex flex-1 items-center justify-center px-4 py-10">
+      <div className="veil-lines" />
       <form
         onSubmit={submit}
-        className="w-full max-w-sm rounded-3xl border border-line bg-card p-7"
+        className="rise w-full max-w-sm rounded-3xl border border-line bg-card p-7 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.7)]"
       >
-        <h1 className="font-display text-xl font-bold">Merchant sign-in</h1>
+        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gold-deep">
+          Private area <span className="text-faint">[ merchant only ]</span>
+        </p>
+        <h1 className="mt-2 font-display text-xl font-semibold">
+          Merchant sign-in
+        </h1>
         <p className="mb-5 mt-1 text-[13px] text-mute">
           This dashboard shows your private ledger. Enter the admin token
           configured in <code className="font-mono">ZINK_ADMIN_TOKEN</code>.

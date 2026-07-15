@@ -30,13 +30,22 @@ export default async function PayPage({
   const shareUrl = `${getConfig().baseUrl}/l/${link.id}`;
 
   return (
-    <div className="panel-gold flex flex-1 items-center justify-center px-4 py-10">
-      <main className="w-full max-w-md">
+    <div className="veil flex flex-1 items-center justify-center px-4 py-10">
+      <div className="veil-lines" />
+      <div
+        className="veil-ring left-1/2 top-1/2 h-[44rem] w-[44rem] -translate-x-1/2 -translate-y-1/2"
+        aria-hidden
+      />
+      <main className="rise w-full max-w-md">
+        <p className="mb-4 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-cream/45">
+          Shielded <span className="text-cream/25">·</span> [ Orchard · ZIP-321
+          ]
+        </p>
         <div className="perf-edge h-3 text-card" aria-hidden />
-        <div className="bg-card px-7 py-8 text-ink shadow-[0_24px_60px_-24px_rgba(23,27,40,0.45)] sm:px-9">
+        <div className="bg-card px-7 py-8 text-ink shadow-[0_40px_90px_-30px_rgba(0,0,0,0.7)] sm:px-9">
           <header className="flex items-start justify-between gap-4 border-b border-dashed border-line pb-5">
             <div>
-              <span className="font-display text-lg font-extrabold tracking-tight">
+              <span className="font-display text-lg font-bold tracking-tight">
                 zink<span className="text-gold-deep">.</span>
               </span>
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-mute">

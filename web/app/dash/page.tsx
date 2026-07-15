@@ -78,11 +78,11 @@ export default async function DashboardPage() {
       <header className="flex items-center justify-between py-6">
         <Link
           href="/"
-          className="font-display text-2xl font-extrabold tracking-tight"
+          className="font-display text-2xl font-bold tracking-tight"
         >
           zink<span className="text-gold-deep">.</span>
         </Link>
-        <nav className="flex items-center gap-5 font-mono text-[12px] uppercase tracking-[0.16em] text-mute">
+        <nav className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.22em] text-mute">
           <Link href="/" className="transition-colors hover:text-ink">
             New link
           </Link>
@@ -96,6 +96,16 @@ export default async function DashboardPage() {
       </header>
 
       <main className="flex-1 pb-14">
+        <div className="pb-6 pt-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-mute">
+            The ledger{" "}
+            <span className="text-faint">[ view-only · reconciled live ]</span>
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            every payment lands.{" "}
+            <span className="text-mute">nothing leaks.</span>
+          </h1>
+        </div>
         <section className="grid gap-4 sm:grid-cols-3">
           <div className="panel-gold rounded-2xl p-5">
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink/60">
